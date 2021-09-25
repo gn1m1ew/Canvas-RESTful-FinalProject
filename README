@@ -1,0 +1,68 @@
+npm install bcrypt
+npm install jsonwebtoken
+npm install mongodb
+ or: npm update
+
+// For clear the volume:
+  docker container stop mongo-server
+  docker container rm mongo-server
+  docker volume rm project
+
+// If your network bookaplace not found, please run this:
+  docker service create --network bookaplace
+or: docker network create bookaplace    (i used this)
+
+
+
+//Create the server and store it into the volume:
+docker run -d --name mongo-server			\
+  --network bookaplace					\
+  -p "27017:27017"						\
+  -e "MONGO_INITDB_ROOT_USERNAME=root"			\
+  -e "MONGO_INITDB_ROOT_PASSWORD=CS493"	\
+  -v project:/app \
+  mongo:latest
+
+
+//Run the docker and connect to the mongo server
+docker run --rm -it \
+--network bookaplace \
+mongo:latest \
+mongo --host mongo-server --username root --password CS493 \
+--authenticationDatabase admin
+
+
+//Create a bookaplace network
+use bookaplace
+
+
+// Create the lower-privilege user inside of bookaplace model:
+db.createUser({
+    user: "bookaplace",
+    pwd: "hunter",
+    roles: [ {role: "readWrite", db:"bookaplace"} ]
+});
+
+// Please exit the bookaplace model and run the command inside of server:
+// export basic data of user
+export MONGO_USER="bookaplace"
+export MONGO_DB_NAME="bookaplace"
+export MONGO_PASSWORD="hunter"
+export RABBITMQ_HOST=localhost
+
+
+// Run the Rabbitmq:
+docker run -d --name rabbitmq-server -p 5672:5672 -p 15672:15672 rabbitmq:management
+
+docker container logs -f rabbitmq-server
+
+
+//Finally run the server:
+npx nodemon server.js
+
+
+//ERROR management
+
+1. if you got "address already in use :::8000"
+  please run: lsof -i tcp:8000    // finding the process-id that running in 8000
+              kill -9 <process-id>
